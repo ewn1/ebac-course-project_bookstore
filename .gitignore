@@ -1,0 +1,14 @@
+# Ambientes virtuais (Evita subir a pasta do Poetry por segurança)
+.venv/
+venv/
+ENV/
+
+# Arquivos de cache do Python e Ferramentas
+__pycache__/
+*.pyc
+.pytest_cache/
+.black
+
+# Arquivos do VS Code e Sistema Operacional
+.vscode/
+.DS_Store
