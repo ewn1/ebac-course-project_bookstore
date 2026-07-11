@@ -44,3 +44,32 @@ class ProductSerializer(serializers.ModelSerializer):
 
         # Garante que o ID do produto é controlado estritamente pelo banco de dados
         read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        """
+        MÉTODO DE CRIAÇÃO CUSTOMIZADA (PRODUTO COM CATEGORIAS)
+        Como um produto pode pertencer a múltiplas categorias (ManyToMany), o DRF
+        não sabe salvá-lo automaticamente de primeira. Sobrescrevemos o create()
+        para isolar as categorias, salvar o produto e depois vincular tudo em lote.
+        """
+
+        # 1. ISOLANDO AS CATEGORIAS
+        # Removemos a lista de categorias do dicionário para não quebrar o .create() do produto.
+        # Buscamos primeiro por "category" (caso use source="category") e depois por "category_ids".
+        categories_data = validated_data.pop(
+            "category", validated_data.pop("category_ids", [])
+        )
+
+        # 2. CRIANDO O PRODUTO (PAI)
+        # Com o validated_data limpo, o '**' desempacota os campos (ex: title, price)
+        # e cria o registro do Produto diretamente no banco de dados.
+        product = Product.objects.create(**validated_data)
+
+        # 3. VINCULANDO AS CATEGORIAS (FILHOS) EM LOTE (PADRÃO DE MERCADO)
+        # Em vez de usar um loop 'for' com '.add()' (que faz várias buscas lentas no banco),
+        # usamos o '.set()'. Ele injeta todas as categorias de uma vez só na tabela intermediária.
+        product.category.set(categories_data)
+
+        # 4. RETORNO DA INSTÂNCIA
+        # Devolvemos o produto pronto e integrado para o DRF gerar o JSON de resposta ao React.
+        return product

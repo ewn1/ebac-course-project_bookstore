@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "app_order",
     "app_product",
     "rest_framework",
+    "django_extensions",
 ]
 
 MIDDLEWARE = [
