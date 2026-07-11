@@ -51,8 +51,8 @@ class ProductFactory(factory.django.DjangoModelFactory):
             # Se o teste não especificou nenhuma categoria,
             # a fábrica cria uma categoria aleatória automaticamente usando a 'CategoryFactory'
             # e vincula a este produto para o teste não rodar sem dados.
-            nova_categoria = CategoryFactory()
-            self.category.add(nova_categoria)
+            new_category = CategoryFactory()
+            self.category.add(new_category)
 
     class Meta:
         model = Product

@@ -16,8 +16,17 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path, include
 
 urlpatterns = [
+    # Rota administrativa padrão
     path("admin/", admin.site.urls),
+    # 1. VERSIONAMENTO DE API COM REGEX
+    # Usamos 're_path' porque precisamos de lógica condicional (Regex).
+    # 'product/' -> prefixo da URL.
+    # '(?P<version>(v1|v2))/' -> captura 'v1' ou 'v2' e salva na variável 'version'.
+    # Isso permite URLs como: /product/v1/ ou /product/v2/
+    re_path("product/(?P<version>(v1|v2))/", include("app_product.urls")),
+    # O mesmo conceito se aplica aqui para os pedidos (orders).
+    re_path("order/(?P<version>(v1|v2))/", include("app_order.urls")),
 ]

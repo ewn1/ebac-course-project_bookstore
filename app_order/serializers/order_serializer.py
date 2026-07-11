@@ -36,19 +36,52 @@ class OrderSerializer(serializers.ModelSerializer):
     def get_total(self, instance):
         """
         O CÁLCULO DO VALOR TOTAL DO PEDIDO
-        A palavra 'instance' representa o pedido atual que está sendo processado.
+        Usamos a agregação nativa do banco de dados para somar os valores.
+        Isso evita carregar dezenas de objetos na memória do servidor,
+        tornando a API extremamente rápida mesmo com carrinhos gigantes.
         """
-        # 1. 'instance.product.all()' busca todos os produtos vinculados a este pedido no banco.
-        # 2. O List Comprehension extrai o '.price' de cada um deles.
-        # 3. A função 'sum()' soma todos esses preços e retorna o valor final da compra.
-        total = sum([product.price for product in instance.product.all()])
-        return total
+        from django.db.models import Sum
+
+        # Pedimos para o banco de dados somar a coluna 'price' e retornar o resultado.
+        # O '|| 0' (ou o .get('price__sum') or 0) garante que se o carrinho estiver vazio, o total seja 0.
+        dados_soma = instance.product.aggregate(Sum("price"))
+        return dados_soma.get("price__sum") or 0
 
     class Meta:
-        # CORREÇÃO: O modelo alvo deste serializer é Order, e não Product!
         model = Order
 
         # Expandimos os campos para o seu e-commerce ficar completo e profissional:
         # Incluímos o 'id' do pedido, o 'user' comprador e o canal de envio 'product_ids'.
         fields = ["id", "user", "product", "product_ids", "total"]
         read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        """
+        MÉTODO DE CRIAÇÃO CUSTOMIZADA (GRAVAÇÃO EM TABELAS RELACIONADAS)
+        Por padrão, o DRF não sabe como salvar um Pedido que tem uma lista de
+        Produtos dentro (relação ManyToMany). Sobrescrevemos o método create()
+        para ensinar o Django a separar o Pedido dos Produtos na hora de salvar.
+        """
+
+        # 1. ISOLANDO OS PRODUTOS
+        # O React envia uma lista de IDs de produtos dentro do campo "product".
+        # Usamos o .pop() para "arrancar" essa lista de dentro do dicionário validated_data.
+        # Fazemos isso porque o método Order.objects.create() não aceita uma lista de cara.
+        # O segundo argumento [] é uma segurança: se não vier produto nenhum, ele assume uma lista vazia.
+        products_data = validated_data.pop("product", [])
+
+        # 2. CRIANDO O PEDIDO (PAI)
+        # Agora que o dicionário validated_data está limpo (sem a lista de produtos),
+        # usamos os dois asteriscos (**) para desempacotar o dicionário (ex: user=user_id).
+        # Isso cria o registro do Pedido no banco de dados e nos devolve a instância 'order'.
+        order = Order.objects.create(**validated_data)
+
+        # 3. VINCULANDO OS FILHOS (PRODUTOS) AO PEDIDO
+        # Com o pedido já criado e com um ID gerado pelo banco, usamos o método .set().
+        # O .set() recebe a lista de IDs de produtos e faz o vínculo automático deles
+        # com o pedido na tabela intermediária do banco de dados de forma ultra performática.
+        order.product.set(products_data)
+
+        # 4. RETORNO DA INSTÂNCIA
+        # Devolvemos o pedido completo e devidamente vinculado para a ViewSet responder o JSON ao Front-end.
+        return order
