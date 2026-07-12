@@ -15,18 +15,32 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+import debug_toolbar
 from django.contrib import admin
 from django.urls import path, re_path, include
 
 urlpatterns = [
     # Rota administrativa padrão
     path("admin/", admin.site.urls),
-    # 1. VERSIONAMENTO DE API COM REGEX
-    # Usamos 're_path' porque precisamos de lógica condicional (Regex).
-    # 'product/' -> prefixo da URL.
-    # '(?P<version>(v1|v2))/' -> captura 'v1' ou 'v2' e salva na variável 'version'.
-    # Isso permite URLs como: /product/v1/ ou /product/v2/
-    re_path("product/(?P<version>(v1|v2))/", include("app_product.urls")),
-    # O mesmo conceito se aplica aqui para os pedidos (orders).
-    re_path("order/(?P<version>(v1|v2))/", include("app_order.urls")),
+    # =========================================================================
+    # CENTRALIZAÇÃO DE API E VERSIONAMENTO GLOBAL
+    # =========================================================================
+    # Em vez de criar um re_path para cada aplicativo, envelopamos toda a API
+    # sob o prefixo 'api/'. O Regex captura se é 'v1' ou 'v2' de forma global.
+    # Usamos o 'include([...])' para criar um subgrupo de caminhos limpos.
+    #
+    # URLs resultantes: /api/v1/... ou /api/v2/...
+    # =========================================================================
+    re_path(
+        r"^api/(?P<version>(v1|v2))/",
+        include(
+            [
+                # Se a URL contiver 'products', o Django delega para o app_product
+                path("", include("app_product.urls")),
+                # Se a URL contiver 'orders', o Django delega para o app_order
+                path("", include("app_order.urls")),
+            ]
+        ),
+    ),
+    path("__debug__/", include(debug_toolbar.urls)),
 ]
