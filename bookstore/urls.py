@@ -18,29 +18,21 @@ Including another URLconf
 import debug_toolbar
 from django.contrib import admin
 from django.urls import path, re_path, include
+from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
     # Rota administrativa padrão
     path("admin/", admin.site.urls),
+    # Debug Toolbar
+    path("__debug__/", include(debug_toolbar.urls)),
+    # Endpoint de Autenticação por Token
+    path("api-token-auth/", obtain_auth_token, name="api_token_auth"),
     # =========================================================================
     # CENTRALIZAÇÃO DE API E VERSIONAMENTO GLOBAL
     # =========================================================================
-    # Em vez de criar um re_path para cada aplicativo, envelopamos toda a API
-    # sob o prefixo 'api/'. O Regex captura se é 'v1' ou 'v2' de forma global.
-    # Usamos o 'include([...])' para criar um subgrupo de caminhos limpos.
-    #
-    # URLs resultantes: /api/v1/... ou /api/v2/...
+    # Desmembramos os includes para evitar falhas de importação circular no Django.
+    # As rotas internas dos apps continuarão respondendo sob /api/v1/... ou /api/v2/...
     # =========================================================================
-    re_path(
-        r"^api/(?P<version>(v1|v2))/",
-        include(
-            [
-                # Se a URL contiver 'products', o Django delega para o app_product
-                path("", include("app_product.urls")),
-                # Se a URL contiver 'orders', o Django delega para o app_order
-                path("", include("app_order.urls")),
-            ]
-        ),
-    ),
-    path("__debug__/", include(debug_toolbar.urls)),
+    re_path(r"^api/(?P<version>(v1|v2))/", include("app_product.urls")),
+    re_path(r"^api/(?P<version>(v1|v2))/", include("app_order.urls")),
 ]

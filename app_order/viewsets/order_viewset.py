@@ -3,7 +3,12 @@
 # que já vem com toda a lógica de banco de dados (CRUD) pronta para uso.
 from rest_framework.viewsets import ModelViewSet
 
-# 2. AS MATÉRIAS-PRIMAS DA NOSSA VIEW
+# 2. ACESSANDO O SISTEMA DE AUTENTICAÇÃO E PERMISSÕES
+# Importamos a classe IsAuthenticated para garantir que apenas usuários que
+# enviaram um Token válido consigam interagir com os pedidos da nossa API.
+from rest_framework.permissions import IsAuthenticated
+
+# 3. AS MATÉRIAS-PRIMAS DA NOSSA VIEW
 # Precisamos do Modelo (para saber de qual tabela do banco ler/gravar os dados)
 # e do Serializer (o tradutor que transforma os dados do banco em JSON e vice-versa).
 from app_order.models import Order
@@ -20,16 +25,18 @@ class OrderViewSet(ModelViewSet):
     # recebidos no POST/PUT e para formatar a resposta que volta em JSON.
     serializer_class = OrderSerializer
 
-    # 3. O PULO DO GATO: CONSULTA DINÂMICA (BOA PRÁTICA DE MERCADO)
-    # Em vez de usar a variável estática 'queryset = Order.objects.all()',
-    # sobrescrevemos o método 'get_queryset'. Isso protege nossa API e permite
-    # aplicar lógicas futuras (como fazer o cliente ver apenas os seus próprios pedidos).
+    # BLINDAGEM DE SEGURANÇA: Nenhuma requisição (seja GET ou POST) passará daqui
+    # sem um Token de Autenticação válido no cabeçalho HTTP. Devolve 403 Forbidden caso falhe.
+    permission_classes = [IsAuthenticated]
+
+    # 4. CONSULTA DINÂMICA COMPLETA (PADRÃO DE MERCADO REQUERIDO EM EMPRESAS)
+    # Sobrescrevemos o método 'get_queryset' para injetar uma regra essencial de negócio:
+    # Um cliente NUNCA pode ver, listar ou editar os pedidos feitos por outro cliente!
     def get_queryset(self):
         """
         Este método é executado pelo DRF toda vez que uma requisição chega.
-        Ele define o "escopo" inicial de quais registros do banco de dados
-        esta ViewSet pode manipular.
+        Filtramos os pedidos dinamicamente capturando quem disparou a requisição.
         """
-        # Por enquanto, ele faz a busca geral trazendo todos os pedidos.
-        # A consulta só vai de fato ao banco de dados no momento da requisição!
-        return Order.objects.all()
+        # self.request.user contém a instância do usuário que foi autenticado pelo Token.
+        # Ordenamos por '-id' (decrescente) para resolver o aviso 'UnorderedObjectListWarning' no Pytest.
+        return Order.objects.filter(user=self.request.user).order_by("-id")

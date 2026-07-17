@@ -9,7 +9,11 @@ from app_product.serializers.product_serializer import ProductSerializer
 # Importamos as classes de Autenticação (como o usuário prova quem ele é).
 # SessionAuthentication: Usa a sessão do navegador (cookies) - ótimo para testes no browser e painel admin.
 # BasicAuthentication: Usa cabeçalho HTTP com usuário e senha - bom para testes via Postman/Insomnia.
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.authentication import (
+    SessionAuthentication,
+    BasicAuthentication,
+    TokenAuthentication,
+)
 
 # Importamos as classes de Permissão (o que o usuário autenticado tem autorização para fazer).
 # IsAuthenticated: Bloqueia o acesso de visitantes anônimos. Só entra quem estiver logado.
@@ -25,7 +29,11 @@ class ProductViewSet(ModelViewSet):
     # 2. SEGURANÇA DA VIEWSET
     # authentication_classes: Define os métodos aceitos para reconhecer o usuário da requisição.
     # O DRF vai tentar validar a Sessão; se não encontrar, tenta validar via Basic Auth.
-    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    authentication_classes = [
+        SessionAuthentication,
+        BasicAuthentication,
+        TokenAuthentication,
+    ]
 
     # permission_classes: Define a barreira de acesso.
     # Aqui dizemos: "Para acessar qualquer endpoint de Produto (GET, POST, etc),
