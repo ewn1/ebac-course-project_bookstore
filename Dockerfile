@@ -40,7 +40,7 @@ WORKDIR /app
 # Copia os arquivos de configuração primeiro para aproveitar o cache do Docker
 COPY poetry.lock pyproject.toml /app/
 
-# O TRUQUE DE MESTRE: Remove o lock antigo se houver, gera um novo com Poetry 2.4 
+# Remove o lock antigo se houver, gera um novo com Poetry 2.4 
 # e instala tudo direto no escopo global do container de forma limpa.
 RUN rm -f poetry.lock \
     && poetry lock --regenerate \

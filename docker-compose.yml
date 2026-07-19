@@ -1,0 +1,60 @@
+services:
+  # ============================================================================
+  # SERVICE WEB: O Container da sua Aplicação Django
+  # ============================================================================
+  web:
+    # 'build: .' instrui o Docker a procurar o arquivo 'Dockerfile' na raiz do projeto
+    # para construir a imagem customizada do Python + Django do zero.
+    build: .
+    
+    # OBSERVAÇÃO DE MERCADO: Removemos o 'command' que rodava o 'runserver' aqui.
+    # Agora, o Docker segue estritamente o comando 'CMD' definido dentro do Dockerfile,
+    # garantindo que o 'python manage.py migrate' aconteça automaticamente antes do app subir!
+
+    # Volumes sincronizam os arquivos da sua máquina física com o container em tempo real.
+    volumes:
+      - .:/app  # O ponto (.) representa a sua pasta atual no Windows/WSL. Ela é espelhada
+                # dentro da pasta '/app' do container (definida como WORKDIR no Dockerfile).
+                # Isso permite que qualquer alteração que você faça no código atualize a API na hora.
+
+    # Mapeamento de Portas: "[Porta de Entrada na sua Máquina] : [Porta de Saída do Container]"
+    ports:
+      - "8000:8000" # Abre o acesso para você digitar http://localhost:8000 no seu navegador.
+
+    # Arquivo de Variáveis de Ambiente: injeta configurações sensíveis e dinâmicas no Django.
+    env_file:
+      - ./.env.dev  # Fornece dados como DEBUG=1, SECRET_KEY e as credenciais de acesso ao banco.
+
+    # Gerenciamento de Dependência/Ordem de Inicialização
+    depends_on:
+      - db # Avisa ao Docker: "Não suba o Django antes que o banco de dados (db) esteja de pé".
+
+  # ============================================================================
+  # SERVICE DB: O Container do seu Banco de Dados PostgreSQL
+  # ============================================================================
+  db:
+    # Baixa uma imagem oficial e pronta do PostgreSQL direto do Docker Hub.
+    # Usamos '16.0-alpine' para ter a versão 16 em um sistema operacional ultra-leve (Alpine).
+    image: postgres:16.0-alpine
+
+    # Volume Nomeado persistente para dados do banco de dados.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/ # O PostgreSQL salva todos os dados reais nessa pasta interna.
+                                                # Espelhando isso no volume 'postgres_data', as tabelas e livros cadastrados
+                                                # NÃO somem quando o container é parado. Só somem com 'down -v'.
+
+    # Variáveis de inicialização do próprio banco de dados Postgres.
+    # ATENÇÃO: Elas precisam ser exatamente iguais às variáveis 'SQL_DATABASE', 'SQL_USER' e
+    # 'SQL_PASSWORD' que o Django usa no seu arquivo '.env.dev' para que a conexão funcione.
+    environment:
+      - POSTGRES_DB=bookstore_dev_db # Cria o banco com este nome se ele não existir.
+      - POSTGRES_USER=bookstore_dev   # Cria o usuário administrador do banco.
+      - POSTGRES_PASSWORD=bookstore_dev # Define a senha de acesso desse usuário.
+
+# ==============================================================================
+# DEFINIÇÃO GLOBAL DE VOLUMES NOMEDADOS
+# ==============================================================================
+# Declara formalmente para o Docker Engine que o volume 'postgres_data' é gerenciado
+# de forma isolada e segura pelo próprio Docker, sobrevivendo ao ciclo de vida dos containers.
+volumes:
+  postgres_data:
