@@ -92,9 +92,9 @@ jobs:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
-      # Step 5: Instala todas as dependências declaradas no 'pyproject.toml'
+      # Step 5: Instala apenas as dependências (sem tentar empacotar o projeto como biblioteca)
       - name: Install Project Dependencies
-        run: poetry install --no-interaction
+        run: poetry install --no-interaction --no-root
 
       # Step 6: Aplica as migrações do banco no PostgreSQL para criar a estrutura das tabelas
       - name: Run Django Database Migrations
