@@ -1,16 +1,8 @@
 # ==============================================================================
 # GITHUB ACTIONS: Análise Estática e Qualidade de Código (CodeFactor)
 # ==============================================================================
-# Este workflow roda em paralelo ao nosso pipeline de testes (build.yml).
-# O objetivo dele é analisar a saúde do código (Code Smells, duplicidades e
-# complexidade) e reportar o resultado diretamente no CodeFactor/GitHub.
-# ==============================================================================
-
 name: CodeFactor Code Quality Review
 
-# ------------------------------------------------------------------------------
-# GATILHOS (TRIGGERS): Quando esta análise deve ser executada?
-# ------------------------------------------------------------------------------
 on:
   push:
     branches:
@@ -22,25 +14,24 @@ on:
       - master
 
 # ------------------------------------------------------------------------------
-# JOBS: A tarefa de análise de qualidade
+# PERMISSÕES: Concede ao robô permissão para analisar e postar os status no PR/Commit
 # ------------------------------------------------------------------------------
+permissions:
+  contents: read
+  issues: write
+  checks: write
+  pull-requests: write
+
 jobs:
   codefactor-analysis:
     name: Run CodeFactor Review
-    runs-on: ubuntu-latest # Executa numa VM Linux leve mantida pelo GitHub
+    runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Clona o código do repositório para a máquina do GitHub Actions
       - name: Checkout Repository Code
         uses: actions/checkout@v4
 
-      # Step 2: Executa a Action oficial do CodeFactor
-      # Esta action varre os arquivos do projeto e envia as métricas de qualidade
       - name: CodeFactor Quality Action
         uses: codefactor-io/codefactor-action@v0.5.0
         with:
-          # O secrets.GITHUB_TOKEN é gerado automaticamente pelo GitHub para
-          # autenticar ações dentro do próprio repositório sem expor senhas.
           myToken: ${{ secrets.GITHUB_TOKEN }}
-          # Opcional: Define o número máximo de erros antes de falhar a build (default é tolerante)
-          max-issues: 50
