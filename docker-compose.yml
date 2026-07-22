@@ -36,6 +36,8 @@ services:
     # Baixa uma imagem oficial e pronta do PostgreSQL direto do Docker Hub.
     # Usamos '16.0-alpine' para ter a versão 16 em um sistema operacional ultra-leve (Alpine).
     image: postgres:16.0-alpine
+    ports:
+      - "5432:5432"
 
     # Volume Nomeado persistente para dados do banco de dados.
     volumes:

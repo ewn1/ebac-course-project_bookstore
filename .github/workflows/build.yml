@@ -1,0 +1,107 @@
+# ==============================================================================
+# GITHUB ACTIONS: Pipeline de Integração Contínua (CI) - Bookstore API
+# ==============================================================================
+# Este workflow garante que todo código enviado para o repositório seja testado
+# e validado automaticamente em um ambiente isolado idêntico ao de produção.
+# ==============================================================================
+
+name: Django Continuous Integration (CI)
+
+# ------------------------------------------------------------------------------
+# GATILHOS (TRIGGERS): Define quando este workflow deve disparar automaticamente
+# ------------------------------------------------------------------------------
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+# ------------------------------------------------------------------------------
+# JOBS: Conjunto de tarefas executadas em máquinas virtuais do GitHub
+# ------------------------------------------------------------------------------
+jobs:
+  test-and-build:
+    name: Run Linter, Migrations and Pytest
+    runs-on: ubuntu-latest # Executa em uma máquina virtual Linux leve e atualizada
+
+    # ==========================================================================
+    # CONTAINER SERVICES: Serviços auxiliares que o app precisa para rodar
+    # ==========================================================================
+    # Em vez de testar com SQLite, subimos o mesmo Postgres 16 do seu Docker!
+    # ==========================================================================
+    services:
+      postgres_db:
+        image: postgres:16.0-alpine
+        env:
+          POSTGRES_DB: bookstore_dev_db
+          POSTGRES_USER: bookstore_dev
+          POSTGRES_PASSWORD: bookstore_dev
+        ports:
+          - 5432:5432
+        # Healthcheck garante que o GitHub só rode os testes QUANDO o Postgres estiver 100% pronto
+        options: >-
+          --health-cmd "pg_isready -U bookstore_dev -d bookstore_dev_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # ==========================================================================
+    # VARIÁVEIS DE AMBIENTE: Injetadas no Django durante os testes
+    # ==========================================================================
+    env:
+      DEBUG: "1"
+      SECRET_KEY: "ci-cd-test-secret-key-super-safe"
+      # Conecta o Django diretamente ao container de Postgres rodando na máquina virtual
+      DATABASE_URL: "postgres://bookstore_dev:bookstore_dev@localhost:5432/bookstore_dev_db"
+      POSTGRES_DB: "bookstore_dev_db"
+      POSTGRES_USER: "bookstore_dev"
+      POSTGRES_PASSWORD: "bookstore_dev"
+      POSTGRES_HOST: "localhost"
+      POSTGRES_PORT: "5432"
+
+    # ==========================================================================
+    # STEPS: A sequência exata de comandos que a máquina virtual irá executar
+    # ==========================================================================
+    steps:
+      # Step 1: Baixa o código do seu repositório para a máquina do GitHub
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      # Step 2: Instala o Python 3.12 no ambiente do GitHub Actions
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Step 3: Instala o gerenciador de pacotes Poetry
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      # Step 4: Cache das dependências para deixar o pipeline ultra-rápido no futuro
+      - name: Cache Poetry Virtual Environment
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+      # Step 5: Instala todas as dependências declaradas no 'pyproject.toml'
+      - name: Install Project Dependencies
+        run: poetry install --no-interaction
+
+      # Step 6: Aplica as migrações do banco no PostgreSQL para criar a estrutura das tabelas
+      - name: Run Django Database Migrations
+        run: |
+          poetry run python manage.py migrate
+
+      # Step 7: Executa a suíte de testes com o Pytest
+      - name: Run Pytest Suite
+        run: |
+          poetry run pytest
