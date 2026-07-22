@@ -55,6 +55,8 @@ jobs:
     env:
       DEBUG: "1"
       SECRET_KEY: "ci-cd-test-secret-key-super-safe"
+      DJANGO_ALLOWED_HOSTS: "localhost 127.0.0.1"
+      
       # Conecta o Django diretamente ao container de Postgres rodando na máquina virtual
       DATABASE_URL: "postgres://bookstore_dev:bookstore_dev@localhost:5432/bookstore_dev_db"
       POSTGRES_DB: "bookstore_dev_db"
